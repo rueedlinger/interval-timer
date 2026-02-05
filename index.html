@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sport Interval Timer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center">
+
+<div class="bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-md">
+
+  <h2 class="text-2xl font-bold text-center mb-4">Sport Interval Timer</h2>
+
+  <!-- Interval input -->
+  <input
+    id="name"
+    type="text"
+    placeholder="Interval name"
+    class="w-full mb-2 px-3 py-2 rounded bg-gray-700 focus:outline-none"
+  >
+
+  <div class="flex items-center justify-center gap-2 mb-3">
+    <input id="minutes" type="number" min="0" value="0"
+      class="w-20 px-2 py-2 rounded bg-gray-700 text-center">
+    <span class="text-xl">:</span>
+    <input id="seconds" type="number" min="0" max="59" value="0"
+      class="w-20 px-2 py-2 rounded bg-gray-700 text-center">
+  </div>
+
+  <!-- Color picker -->
+  <div class="flex items-center justify-center mb-3 gap-2">
+    <label class="text-sm">Color:</label>
+    <input type="color" id="colorPicker" value="#FFFFFF" class="w-10 h-10 p-0 border-0 rounded">
+  </div>
+
+  <button
+    id="addBtn"
+    onclick="addInterval()"
+    class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded mb-4 disabled:opacity-40"
+  >
+    Add Interval
+  </button>
+
+  <!-- Interval list -->
+  <ul id="intervalList" class="text-sm mb-4 space-y-1"></ul>
+
+  <!-- Current interval -->
+  <div id="currentName" class="text-white text-lg text-center">Ready</div>
+  <div id="timerDisplay" class="text-8xl font-mono text-center my-2">00:00</div>
+
+  <!-- Total time spent -->
+  <div class="text-2xl font-mono text-center mb-2">
+    Total Time: <span id="totalTimeDisplay">00:00</span>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="w-full bg-gray-700 rounded h-3 overflow-hidden mb-4">
+    <div
+      id="progressBar"
+      class="h-full transition-all duration-100"
+      style="width: 0%; background-color: #FFFFFF"
+    ></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="text-sm text-gray-300 text-center mb-4">
+    Completed rounds: <span id="rounds">0</span>
+  </div>
+
+  <!-- Controls -->
+  <div class="grid grid-cols-3 gap-2">
+    <button
+      id="startBtn"
+      onclick="startOrResume()"
+      class="bg-green-600 hover:bg-green-700 py-2 rounded disabled:opacity-40"
+    >
+      Start
+    </button>
+
+    <button
+      id="pauseBtn"
+      onclick="pause()"
+      disabled
+      class="bg-yellow-600 hover:bg-yellow-700 py-2 rounded disabled:opacity-40"
+    >
+      Pause
+    </button>
+
+    <button
+      onclick="resetTimer()"
+      class="bg-red-600 hover:bg-red-700 py-2 rounded"
+    >
+      Reset
+    </button>
+  </div>
+</div>
+
+<script>
+let intervals = [];
+let audioCtx;
+let intervalIndex = 0;
+let intervalTotal = 0;
+let remaining = 0;
+let rounds = 0;
+let totalSecondsCompleted = 0;
+let running = false;
+let requestId = null;
+let prevSecond = null;
+let intervalStartTime = 0;
+let firstStart = true;
+
+const addBtn = document.getElementById("addBtn");
+const startBtn = document.getElementById("startBtn");
+const pauseBtn = document.getElementById("pauseBtn");
+const progressBar = document.getElementById("progressBar");
+const currentNameDisplay = document.getElementById("currentName");
+
+// ==================== BEEP ====================
+function beep() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.frequency.value = 800;
+  gain.gain.value = 0.3;
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.15);
+}
+
+// ==================== ADD INTERVAL ====================
+function addInterval() {
+  const name = document.getElementById("name").value.trim() || "Interval";
+  let m = parseInt(document.getElementById("minutes").value) || 0;
+  let s = parseInt(document.getElementById("seconds").value) || 0;
+  if (m < 0) m = 0;
+  if (s < 0) s = 0;
+  if (s > 59) s = 59;
+
+  const time = m * 60 + s;
+  if (time <= 0) return;
+
+  const color = document.getElementById("colorPicker").value;
+  intervals.push({ name, time, color });
+
+  // Reset inputs
+  document.getElementById("name").value = "";
+  document.getElementById("minutes").value = 0;
+  document.getElementById("seconds").value = 0;
+  document.getElementById("colorPicker").value = "#FFFFFF";
+
+  renderIntervals();
+}
+
+// ==================== RENDER INTERVALS ====================
+function renderIntervals() {
+  const list = document.getElementById("intervalList");
+  list.innerHTML = "";
+  intervals.forEach((i, idx) => {
+    const li = document.createElement("li");
+    li.textContent = `${idx + 1}. ${i.name} – ${formatTime(i.time)}`;
+    li.style.color = i.color;
+    list.appendChild(li);
+  });
+}
+
+// ==================== START / RESUME ====================
+function startOrResume() {
+  if (intervals.length === 0 || running) return;
+
+  running = true;
+  addBtn.disabled = true;
+  startBtn.disabled = true;
+  pauseBtn.disabled = false;
+
+  if (remaining === 0) {
+    intervalTotal = intervals[intervalIndex].time;
+    remaining = intervalTotal;
+    const color = intervals[intervalIndex].color;
+    progressBar.style.width = "0%";
+    progressBar.style.backgroundColor = color;
+    currentNameDisplay.textContent = intervals[intervalIndex].name;
+    currentNameDisplay.style.color = color;
+  }
+
+  intervalStartTime = performance.now() - (intervalTotal - remaining) * 1000;
+  prevSecond = null;
+  updateDisplay();
+
+  if (firstStart) {
+    setTimeout(() => {
+      requestId = requestAnimationFrame(tickIntervalPrecise);
+      firstStart = false;
+    }, 1000);
+  } else {
+    requestId = requestAnimationFrame(tickIntervalPrecise);
+  }
+}
+
+// ==================== PAUSE ====================
+function pause() {
+  if (!running) return;
+  running = false;
+  if (requestId) cancelAnimationFrame(requestId);
+  requestId = null;
+
+  const elapsed = (performance.now() - intervalStartTime) / 1000;
+  remaining = Math.max(0, intervalTotal - elapsed);
+
+  startBtn.disabled = false;
+  pauseBtn.disabled = true;
+}
+
+// ==================== RESET ====================
+function resetTimer(fullReset = true) {
+  running = false;
+  if (requestId) cancelAnimationFrame(requestId);
+  requestId = null;
+
+  intervalIndex = 0;
+  remaining = 0;
+  intervalTotal = 0;
+  rounds = 0;
+  totalSecondsCompleted = 0;
+  intervalStartTime = 0;
+  firstStart = true;
+  prevSecond = null;
+
+  document.getElementById("timerDisplay").textContent = "00:00";
+  document.getElementById("totalTimeDisplay").textContent = "00:00";
+  currentNameDisplay.textContent = "Ready";
+  currentNameDisplay.style.color = "#FFFFFF";
+  progressBar.style.width = "0%";
+  progressBar.style.backgroundColor = "#FFFFFF";
+  document.getElementById("rounds").textContent = "0";
+
+  startBtn.disabled = false;
+  pauseBtn.disabled = true;
+  addBtn.disabled = false;
+
+  if (fullReset) {
+    intervals = [];
+    document.getElementById("intervalList").innerHTML = "";
+    document.getElementById("minutes").value = 0;
+    document.getElementById("seconds").value = 0;
+    document.getElementById("name").value = "";
+    document.getElementById("colorPicker").value = "#FFFFFF";
+  }
+}
+
+// ==================== UPDATE DISPLAY ====================
+function updateDisplay() {
+  let elapsedCurrent = (performance.now() - intervalStartTime) / 1000;
+  let intervalRemaining = Math.max(0, intervalTotal - elapsedCurrent);
+  const totalTime = totalSecondsCompleted + (intervalTotal - intervalRemaining);
+
+  document.getElementById("timerDisplay").textContent = formatTime(intervalRemaining);
+  document.getElementById("totalTimeDisplay").textContent = formatTime(totalTime);
+
+  const progress = ((intervalTotal - intervalRemaining) / intervalTotal) * 100;
+  progressBar.style.width = `${progress}%`;
+}
+
+// ==================== TICK ====================
+function tickIntervalPrecise() {
+  if (!running) return;
+
+  let elapsedCurrent = (performance.now() - intervalStartTime) / 1000;
+  let intervalRemaining = Math.max(0, intervalTotal - elapsedCurrent);
+
+  updateDisplay();
+
+  if (intervalRemaining <= 3 && intervalRemaining > 0 && Math.floor(intervalRemaining) !== prevSecond) beep();
+  prevSecond = Math.floor(intervalRemaining);
+
+  if (intervalRemaining <= 0) {
+    beep();
+    totalSecondsCompleted += intervalTotal;
+
+    intervalIndex++;
+    if (intervalIndex >= intervals.length) {
+      intervalIndex = 0;
+      rounds++;
+      document.getElementById("rounds").textContent = rounds;
+    }
+
+    remaining = 0;
+    running = false;
+    startBtn.disabled = false;
+    pauseBtn.disabled = true;
+    prevSecond = null;
+
+    // Auto start next interval if intervals exist
+    if (intervals.length > 0) startOrResume();
+    return;
+  }
+
+  requestId = requestAnimationFrame(tickIntervalPrecise);
+}
+
+// ==================== FORMAT TIME ====================
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+</script>
+
+</body>
+</html>
