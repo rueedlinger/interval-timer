@@ -1,10 +1,9 @@
-from typing import List, Optional
+from typing import Annotated, List, Optional
 
 
 from pydantic import BaseModel, Field
 
 from enum import Enum
-
 
 class WorkoutAction(str, Enum):
     START = "start"
@@ -18,17 +17,22 @@ class WorkoutStatus(str, Enum):
     COMPLETED = "completed"
     STOPPED = "stopped"
 
+# Constrained string for hex colors
+HexColor = Annotated[str, Field(pattern=r"^#?[0-9A-Fa-f]{6}$")]
+
 
 class IntervalCreate(BaseModel):
     name: str
     time_seconds: int = Field(gt=0)
-    color: str = "FFFFFF"
+    color: HexColor = "#FFFFFF"
 
     model_config = {
+        "extra": "forbid",
         "json_schema_extra": {
             "example": {"name": "Warmup", "time_seconds": 30, "color": "#FF0000"}
-        }
+        },
     }
+
 
 
 class IntervalResponse(BaseModel):
@@ -36,6 +40,13 @@ class IntervalResponse(BaseModel):
     time_seconds: int
     remaining: int
     color: str
+
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "example": {"name": "Warmup", "time_seconds": 30, "remaining": 10, "color": "#FF0000"}
+        },
+    }
 
 
 class TrainingCreate(BaseModel):
@@ -63,13 +74,19 @@ class TrainingResponse(BaseModel):
     current_round: int
     intervals: List[IntervalResponse]
 
+    model_config = {"extra": "forbid"}
+
+
 
 class WorkoutResponse(BaseModel):
     status: WorkoutStatus
 
+    model_config = {"extra": "forbid"}
 
 class UpdateWorkoutRequest(BaseModel):
     action: WorkoutAction
+
+    model_config = {"extra": "forbid"}
 
 
 class IntervalEvent(BaseModel):
@@ -83,3 +100,5 @@ class IntervalEvent(BaseModel):
     max_rounds: Optional[int]
     duration: float
     paused: float = 0.0
+
+    model_config = {"extra": "forbid"}

@@ -12,6 +12,7 @@ from app.model import (
     TrainingCreate,
     TrainingResponse,
     UpdateWorkoutRequest,
+    WorkoutAction,
     WorkoutResponse,
 )
 from app.util import to_model, to_training_resp
@@ -61,22 +62,28 @@ async def get_training():
 
 @app.post("/timer", response_model=WorkoutResponse)
 async def update_timer(request: UpdateWorkoutRequest):
-    action = request.action.lower()
-    timer = app.state.timer
+    try:
+        # Convert string to enum (case-insensitive)
+        action = WorkoutAction[request.action.upper()]
+        timer = app.state.timer
 
-    if action == "start":
-        timer.start()
-    elif action == "stop":
-        timer.stop()
-    elif action == "pause":
-        timer.pause()
-    else:
+        if action == WorkoutAction.START:
+            timer.start()
+        elif action == WorkoutAction.STOP:
+            timer.stop()
+        elif action == WorkoutAction.PAUSE:
+            timer.pause()
+        else:
+            raise HTTPException(status_code=400, detail="Invalid action")
+
+    except KeyError:
+        # This will trigger if the string doesn't match any enum member
         raise HTTPException(status_code=400, detail="Invalid action")
 
-    return WorkoutResponse(status=timer.status())
+    return WorkoutResponse(status=timer.get_state())
 
 
-@app.get("/workout/events")
+@app.get("/workout")
 async def interval_events():
     """
     SSE endpoint streaming interval timer updates.
