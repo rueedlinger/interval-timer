@@ -3,6 +3,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 import asyncio
 
+from fastapi.staticfiles import StaticFiles
+
 
 from app.core import Interval, Workout, Training
 from app.model import (
@@ -35,6 +37,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+# Mount static folder
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 
 @app.post("/training", response_model=TrainingResponse)
