@@ -29,7 +29,7 @@ check: format lint
 
 # Run unittests
 test:	
-	uv run coverage run -m pytest -v
+	uv run coverage run -m pytest -v -s
 	uv run coverage html
 	uv run coverage report -m
 	

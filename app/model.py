@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from enum import Enum
 
+
 class WorkoutAction(str, Enum):
     START = "start"
     STOP = "stop"
@@ -16,6 +17,7 @@ class WorkoutStatus(str, Enum):
     PAUSED = "paused"
     COMPLETED = "completed"
     STOPPED = "stopped"
+
 
 # Constrained string for hex colors
 HexColor = Annotated[str, Field(pattern=r"^#?[0-9A-Fa-f]{6}$")]
@@ -34,7 +36,6 @@ class IntervalCreate(BaseModel):
     }
 
 
-
 class IntervalResponse(BaseModel):
     name: str
     time_seconds: int
@@ -44,7 +45,12 @@ class IntervalResponse(BaseModel):
     model_config = {
         "extra": "forbid",
         "json_schema_extra": {
-            "example": {"name": "Warmup", "time_seconds": 30, "remaining": 10, "color": "#FF0000"}
+            "example": {
+                "name": "Warmup",
+                "time_seconds": 30,
+                "remaining": 10,
+                "color": "#FF0000",
+            }
         },
     }
 
@@ -77,11 +83,11 @@ class TrainingResponse(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-
 class WorkoutResponse(BaseModel):
     status: WorkoutStatus
 
     model_config = {"extra": "forbid"}
+
 
 class UpdateWorkoutRequest(BaseModel):
     action: WorkoutAction
