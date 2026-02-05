@@ -37,6 +37,9 @@ class Interval:
     def get_remaining_seconds(self) -> float:
         return self._remaining_seconds
 
+    def get_time_seconds(self) -> float:
+        return self._time_seconds
+
 
 class Training:
     def __init__(
@@ -81,6 +84,10 @@ class Training:
             self._current_round += 1
 
         return self._intervals[self._current_index]
+
+    def get_intervals(self):
+        for item in self._intervals:
+            yield item
 
     def reset_all(self) -> None:
         for interval in self._intervals:

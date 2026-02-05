@@ -6,6 +6,19 @@ from pydantic import BaseModel, Field
 from enum import Enum
 
 
+class WorkoutAction(str, Enum):
+    START = "start"
+    STOP = "stop"
+    PAUSE = "pause"
+
+
+class WorkoutStatus(str, Enum):
+    RUNNING = "running"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    STOPPED = "stopped"
+
+
 class IntervalCreate(BaseModel):
     name: str
     time_seconds: int = Field(gt=0)
@@ -28,7 +41,7 @@ class IntervalResponse(BaseModel):
 class TrainingCreate(BaseModel):
     name: str
     max_rounds: Optional[int] = Field(default=None, ge=1)
-    intervalks: List[IntervalCreate]
+    intervals: List[IntervalCreate]
 
     model_config = {
         "json_schema_extra": {
@@ -51,11 +64,12 @@ class TrainingResponse(BaseModel):
     intervals: List[IntervalResponse]
 
 
-class WorkoutStatus(str, Enum):
-    RUNNING = "running"
-    PAUSED = "paused"
-    COMPLETED = "completed"
-    STOPPED = "stopped"
+class WorkoutResponse(BaseModel):
+    status: WorkoutStatus
+
+
+class UpdateWorkoutRequest(BaseModel):
+    action: WorkoutAction
 
 
 class IntervalEvent(BaseModel):

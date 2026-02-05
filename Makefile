@@ -43,6 +43,3 @@ clean:
 	@find . -type d -name "__pycache__" -exec rm -rf {} +
 	@find . -type f -name "*.pyc" -delete
 
-git-reset:
-	git reset --soft $(git commit-tree HEAD^{tree} -m "Initial commit") 
-	git push --force
