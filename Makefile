@@ -17,6 +17,7 @@ help:
 	@echo "  clean      Remove cache files"
 
 sync:
+	uv -V         
 	uv sync --all-groups
 
 format:
