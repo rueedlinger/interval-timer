@@ -37,8 +37,8 @@ def test_run_workflow(training):
     workout = Workout()
     workout.start()
     for event in workout.run(training=training):
-        #print(event)
-        time.sleep(0.01) 
+        # print(event)
+        time.sleep(0.01)
         if event.status == WorkoutStatus.COMPLETED:
             assert int(event.duration) == 3
             assert event.current_round == 1
