@@ -17,7 +17,7 @@ help:
 	@echo "  clean      Remove cache files"
 
 sync:
-	uv sync
+	uv sync --all-groups
 
 format:
 	uv run ruff format .
